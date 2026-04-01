@@ -32,13 +32,13 @@ TypeError: This object is a DataOp that will be evaluated later, when your learn
 
 We get an error because the ``for`` statement tries to iterate immediately
 over the columns. This is the way any computation on any variable is usually run,
-referred to here as *eager* evaluation. However, ``orders.columns`` is not an actual
+referred to here as **eager** evaluation. However, ``orders.columns`` is not an actual
 list of columns: it is a skrub DataOp that will produce a list of columns, later,
 when we run the computation.
 
 Therefore, we must delay the execution of the ``for`` statement until the computation
 actually runs and ``orders.columns`` has been evaluated, hence the designation of
-*deferred* computation rather than *eager*.
+**deferred** computation rather than **eager**.
 
 We can achieve this by defining a function that contains the control flow logic
 we need, and decorating it with :func:`deferred`. This decorator defers the execution
@@ -99,7 +99,7 @@ example, to delay the loading of a CSV file, we could write something like:
 
 Another consequence of the fact that DataOps are evaluated lazily (we are
 building a pipeline, not immediately computing a single result), any
-transformation that we apply *must not modify its input in-place*, but leave it
+transformation that we apply **must not modify its input in-place**, but leave it
 unchanged and return a new value.
 
 Finally, there are other situations where using :func:`deferred` can be helpful:
