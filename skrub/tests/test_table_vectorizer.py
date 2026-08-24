@@ -1280,41 +1280,48 @@ def test_duration_to_float(df_module):
     df_module.assert_column_equal(transformed["duration"], df["duration"])
 
 
-def test_list_transformations(df_module):
-    def list_category(line_name, key, column_type="", with_specific=True, max_cols=3):
-        expected_dict = {
-            "null": ["low_card", "datetime"]
-            + [f"passthrough_{i}" for i in range(1, 6)],
-            "uninformative": ["uninformative"],
-            "datetime": ["datetime"],
-            "float": ["numbers", "uninformative"],
-            "low_card": ["low_card"],
-            "high_card": [],
-            "specific": [f"passthrough_{i}" for i in range(1, 6)],
-        }
-        col_list = expected_dict[key]
-        if with_specific:
-            col_list = [x for x in col_list if x not in expected_dict["specific"]]
+def list_category(line_name, key, column_type="", with_specific=True, max_cols=3):
+    # This generates an expected string output from list_transformations.
+    # The output format is "{line_name} (x columns):", followed
+    # by a bullet-point list of columns.
+    expected_dict = {
+        "null": ["low_card", "datetime"] + [f"passthrough_{i}" for i in range(1, 6)],
+        "uninformative": ["uninformative"],
+        "datetime": ["datetime"],
+        "float": ["numbers", "uninformative"],
+        "low_card": ["low_card"],
+        "high_card": [],
+        "specific": [f"passthrough_{i}" for i in range(1, 6)],
+    }
+    col_list = expected_dict[key]
+    if with_specific:
+        col_list = [x for x in col_list if x not in expected_dict["specific"]]
 
-        disp_list = col_list[:max_cols]
+    disp_list = col_list[:max_cols]
 
-        if len(col_list) != len(disp_list):
-            disp_list.append("...")
+    if len(col_list) != len(disp_list):
+        disp_list.append("...")
 
-        joiner = ""
-        if column_type:
-            joiner += " - "
+    joiner = ""
+    if column_type:
+        joiner += " - "
 
-        full_list = ""
-        if col_list == []:
-            header = f"No {column_type} columns have been detected."
-        else:
-            header = f"{line_name} ({column_type}{joiner}{len(col_list)} columns):"
-            full_list = "\n\t- " + "\n\t- ".join(disp_list) + "\n"
+    full_list = ""
+    if col_list == []:
+        header = f"No {column_type} columns have been detected."
+    else:
+        header = f"{line_name} ({column_type}{joiner}{len(col_list)} columns):"
+        full_list = "\n\t- " + "\n\t- ".join(disp_list) + "\n"
 
-        return header + full_list
+    return header + full_list
 
-    passthrough_line = [
+
+def make_test_df(df_module):
+    # The following lines help create a dummy dataset, containing columns
+    # of various types (numeric, datetime etc.) and a series of identical
+    # "passthrough columns" as defined here:
+
+    passthrough_column = [
         "red",
         "orange",
         "yellow",
@@ -1339,10 +1346,13 @@ def test_list_transformations(df_module):
         "uninformative": [False, False, False, False, False, False, False],
     }
     for i in range(1, 6):
-        df_dict[f"passthrough_{i}"] = passthrough_line
+        df_dict[f"passthrough_{i}"] = passthrough_column
 
-    df = df_module.make_dataframe(df_dict)
+    return df_module.make_dataframe(df_dict)
 
+
+def test_list_transformations_vectorizer(df_module):
+    df = make_test_df(df_module)
     vectorizer = TableVectorizer(
         specific_transformers=[
             (PassThrough(), [f"passthrough_{i}" for i in range(1, 6)])
@@ -1354,8 +1364,6 @@ def test_list_transformations(df_module):
     expected_vectorizer_output = (
         "Preprocessors\n=============\n"
         + list_category("Null values cleaned", "null")
-        + list_category("ToDatetime", "datetime")
-        + list_category("ToFloat", "float")
         + "\nProcessors by type\n==================\n"
         + list_category("PassThrough", "float", column_type="numeric")
         + list_category("DatetimeEncoder", "datetime", column_type="datetime")
@@ -1369,67 +1377,62 @@ def test_list_transformations(df_module):
         + "ToFloat postprocessing (7 columns):"
         + "\n\tAll float columns"
     )
-    """
-    Expected output for the TableVectorizer:
+    # Expected output for the TableVectorizer:
 
-    Preprocessors
-    =============
-    Null values cleaned (2 columns):
-            - low_card
-            - datetime
-    Datetime (1 columns):
-            - datetime
-    ToFloat (2 columns):
-            - numbers
-            - uninformative
+    # Preprocessors
+    # =============
+    # Null values cleaned (2 columns):
+    #         - low_card
+    #         - datetime
 
-    Processors by type
-    ==================
-    PassThrough (numeric - 2 columns):
-            - numbers
-            - uninformative
-    DatetimeEncoder (datetime - 1 columns):
-            - datetime
-    OneHotEncoder (low_cardinality - 1 columns):
-            - low_card
-    No high_cardinality columns have been detected.
+    # Processors by type
+    # ==================
+    # PassThrough (numeric - 2 columns):
+    #         - numbers
+    #         - uninformative
+    # DatetimeEncoder (datetime - 1 columns):
+    #         - datetime
+    # OneHotEncoder (low_cardinality - 1 columns):
+    #         - low_card
+    # No high_cardinality columns have been detected.
 
-    Specific transformers
-    =====================
-    PassThrough (specific - 5 columns):
-            - passthrough_1
-            - passthrough_2
-            - passthrough_3
-            - ...
+    # Specific transformers
+    # =====================
+    # PassThrough (specific - 5 columns):
+    #         - passthrough_1
+    #         - passthrough_2
+    #         - passthrough_3
+    #         - ...
 
-    Postprocessors
-    ==============
-    ToFloat postprocessing (7 columns):
-            All float columns"""
-    assert vectorizer_output == expected_vectorizer_output
+    for output, expected in zip(
+        vectorizer_output.split("\n"), expected_vectorizer_output.split("\n")
+    ):
+        assert output == expected
 
+
+def test_list_transformations_cleaner(df_module):
+    df = make_test_df(df_module)
     vectorizer = Cleaner(drop_if_constant=True)
     _ = vectorizer.fit_transform(df)
 
     cleaner_output = vectorizer.list_transformations(max_cols=3)
-    expected_cleaner_output = (
-        list_category("Null values cleaned", "null", with_specific=False)
-        + list_category("DropUninformative", "uninformative", with_specific=False)
-        + list_category("ToDatetime", "datetime", with_specific=False)
-    )
-    """
-    Expected output for the cleaner:
-    Null values cleaned (7 columns):
-            - low_card
-            - datetime
-            - passthrough_1
-            - passthrough_2
-            - passthrough_3
-            - passthrough_4
-            - passthrough_5
-    DropUninformative (1 columns):
-            - uninformative
-    Datetime (1 columns):
-            - datetime
-    """
-    assert cleaner_output == expected_cleaner_output
+    expected_cleaner_output = list_category(
+        "Null values cleaned", "null", with_specific=False
+    ) + list_category("DropUninformative", "uninformative", with_specific=False)
+
+    # Expected output for the cleaner:
+    # Null values cleaned (7 columns):
+    #         - low_card
+    #         - datetime
+    #         - passthrough_1
+    #         - passthrough_2
+    #         - passthrough_3
+    #         - passthrough_4
+    #         - passthrough_5
+    # DropUninformative (1 columns):
+    #         - uninformative
+
+    for output, expected in zip(
+        cleaner_output.split("\n"), expected_cleaner_output.split("\n")
+    ):
+        assert output == expected

@@ -1244,7 +1244,6 @@ class TableVectorizer(TransformerMixin, SkrubBaseEstimator):
         )
         vectorize_transformations = "Processors by type\n==================\n"
         specific_transformations = ""
-        postprocessing_transformations = "Postprocessors\n==============\n"
 
         all_transformers = self.kind_to_columns_.copy()
         specific = all_transformers.pop("specific")
@@ -1287,8 +1286,6 @@ class TableVectorizer(TransformerMixin, SkrubBaseEstimator):
             + "\n"
             + vectorize_transformations
             + specific_transformations
-            + "\n"
-            + postprocessing_transformations
         )
 
         return full_list
