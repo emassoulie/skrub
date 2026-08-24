@@ -2190,28 +2190,9 @@ class SkrubNamespace:
         Yields
         ------
         dict
-            For each split, a dict is produced, containing the following keys:
+            A dictionary with the same attributes as the output of \
+                `.skb.train_test_split` with the following additional entries:
 
-            - train: a dictionary containing the training environment
-            - test: a dictionary containing the test environment
-            - X: the value of the variable marked with
-              :meth:`~DataOp.skb.mark_as_X()` in ``environment``, before splitting.
-            - y: the value of the variable marked with
-              :meth:`~DataOp.skb.mark_as_y()` in ``environment``, before
-              splitting, if there is one (may not be the case for unsupervised
-              learning).
-            - X_train: the value of the variable marked with
-              :func:`~DataOp.skb.mark_as_X()` in the train environment
-            - X_test: the value of the variable marked with
-              :func:`~DataOp.skb.mark_as_X()` in the test environment
-            - y_train: the value of the variable marked with
-              :func:`~DataOp.skb.mark_as_y()` in
-              the train environment, if there is one (may not be the case for
-              unsupervised learning).
-            - y_test: the value of the variable marked with
-              :func:`~DataOp.skb.mark_as_y()` in
-              the test environment, if there is one (may not be the case for
-              unsupervised learning).
             - row_indices_train: the row indices (in X and y) of the training samples.
             - row_indices_test: the row indices (in X and y) of the testing samples.
 
