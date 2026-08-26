@@ -1284,13 +1284,14 @@ def list_category(line_name, key, column_type="", with_specific=True, max_cols=3
     # This generates an expected string output from list_transformations.
     # The output format is "{line_name} (x columns):", followed
     # by a bullet-point list of columns.
+    specifics = [f"passthrough_{i}" for i in range(1, 6)]
     expected_dict = {
         "null": ["low_card", "datetime"] + [f"passthrough_{i}" for i in range(1, 6)],
         "uninformative": ["uninformative"],
         "datetime": ["datetime"],
         "float": ["numbers", "uninformative"],
         "low_card": ["low_card"],
-        "high_card": [],
+        "high_card": [] if with_specific else specifics,
         "specific": [f"passthrough_{i}" for i in range(1, 6)],
     }
     col_list = expected_dict[key]
@@ -1351,32 +1352,54 @@ def make_test_df(df_module):
     return df_module.make_dataframe(df_dict)
 
 
-def test_list_transformations_vectorizer(df_module):
+@pytest.mark.parametrize("with_specific", [(True), (False)])
+def test_list_transformations_vectorizer(with_specific, df_module):
     df = make_test_df(df_module)
     vectorizer = TableVectorizer(
         specific_transformers=[
             (PassThrough(), [f"passthrough_{i}" for i in range(1, 6)])
         ]
+        if with_specific
+        else [],
+        cardinality_threshold=3,
     )
     _ = vectorizer.fit_transform(df)
     vectorizer_output = vectorizer.list_transformations(max_cols=3)
 
     expected_vectorizer_output = (
         "Preprocessors\n=============\n"
-        + list_category("Null values cleaned", "null")
+        + list_category("Null values cleaned", "null", with_specific=with_specific)
         + "\nProcessors by type\n==================\n"
-        + list_category("PassThrough", "float", column_type="numeric")
-        + list_category("DatetimeEncoder", "datetime", column_type="datetime")
-        + list_category("OneHotEncoder", "low_card", column_type="low_cardinality")
-        + list_category("StringEncoder", "high_card", column_type="high_cardinality")
-        + "\n\nSpecific transformers\n=====================\n"
         + list_category(
-            "PassThrough", "specific", column_type="specific", with_specific=False
+            "PassThrough", "float", column_type="numeric", with_specific=with_specific
         )
-        + "\nPostprocessors\n==============\n"
-        + "ToFloat postprocessing (7 columns):"
-        + "\n\tAll float columns"
+        + list_category(
+            "DatetimeEncoder",
+            "datetime",
+            column_type="datetime",
+            with_specific=with_specific,
+        )
+        + list_category(
+            "OneHotEncoder",
+            "low_card",
+            column_type="low_cardinality",
+            with_specific=with_specific,
+        )
+        + list_category(
+            "StringEncoder",
+            "high_card",
+            column_type="high_cardinality",
+            with_specific=with_specific,
+        )
     )
+
+    if with_specific:
+        expected_vectorizer_output += (
+            "\n\nSpecific transformers\n=====================\n"
+            + list_category(
+                "PassThrough", "specific", column_type="specific", with_specific=False
+            )
+        )
     # Expected output for the TableVectorizer:
 
     # Preprocessors
@@ -1396,7 +1419,7 @@ def test_list_transformations_vectorizer(df_module):
     #         - low_card
     # No high_cardinality columns have been detected.
 
-    # Specific transformers
+    # Specific transformers (if with_specific)
     # =====================
     # PassThrough (specific - 5 columns):
     #         - passthrough_1
